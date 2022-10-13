@@ -7,6 +7,10 @@ clock = pygame.time.Clock()
 pygame.init()
 screen = pygame.display.set_mode([1000, 1000])
 
+pygame.freetype.init()
+
+titleFont = pygame.font.SysFont("arial", 40)
+bodyFont = pygame.font.SysFont("arial", 30)
 class Simulation:
     def __init__(self,tellers,customers):
         self.queueLength = 0
@@ -15,9 +19,9 @@ class Simulation:
         self.customers = customers
         self.nextArrival = 0
         self.beingServed = [None]*self.numTellers
+
         self.totalCustomers = 0
-        self.customersT1 = 0
-        self.customersT2 = 0
+        self.customersPerTeller=[0]*self.numTellers
         
     def serve(self,customerID):
         tellerID=-1
@@ -26,6 +30,8 @@ class Simulation:
             if teller.state == 0:
                 self.beingServed[tellerID]=customerID
                 customerID.assignedTeller=tellerID
+                self.customersPerTeller[tellerID]+=1
+                self.totalCustomers+=1
                 return True, tellerID
         return False, tellerID
         
@@ -56,7 +62,26 @@ class Simulation:
         pygame.draw.rect(display,(0,0,0),(640,250,15,500))
 
     def UI(self,display):
-        pass
+        self.tCustomers = titleFont.render("Total Customers:", True, (0, 0, 0))
+        display.blit(self.tCustomers,(20, 100))
+        self.tCustomersAnswer = titleFont.render(str(self.totalCustomers), True, (0, 0, 0))
+        display.blit(self.tCustomersAnswer,(400 , 100 ))
+
+        self.teller1 = titleFont.render("Customers to Teller 1:", True, (0, 0, 0))
+        display.blit(self.teller1,(20, 160 ))
+        self.t1Answer = titleFont.render(str(self.customersPerTeller[0]), True, (0, 0, 0))
+        display.blit(self.t1Answer,(400, 160))
+
+        self.teller2 = titleFont.render("Customers to Teller 2:", True, (0, 0, 0))
+        display.blit(self.teller2,(20, 220 ))
+        self.t2Answer = titleFont.render(str(self.customersPerTeller[1]), True, (0, 0, 0))
+        display.blit(self.t2Answer,(400 , 220 ))
+'''
+        self.queueL = titleFont.render("Queue Length:", True, (0, 0, 0))
+        display.blit(self.teller2,(20, 220 ))
+        self.queueLAnswer = titleFont.render(str(self.customersPerTeller[1]), True, (0, 0, 0))
+        display.blit(self.t2Answer,(400 , 220 ))
+'''
 
 class Teller():
     def __init__(self, multiplier,tellerID):
@@ -150,6 +175,8 @@ def main():
         
         sim.draw(screen)
     
+        sim.UI(screen)
+
         if (simtime%1==0):
             for customer in sim.customers:
                 if customer.queueLocation == 1 and customer.isServed==0 and customer.ready==1:
