@@ -25,6 +25,7 @@ class Simulation:
             tellerID+=1
             if teller.state == 0:
                 self.beingServed[tellerID]=customerID
+                customerID.assignedTeller=tellerID
                 return True, tellerID
         return False, tellerID
         
@@ -32,7 +33,7 @@ class Simulation:
         self.queueLength+=1
         newCustomer = Customer(self.queueLength)
         self.customers.append(newCustomer)
-        self.nextArrival = simtime + (-np.log(1-(np.random.uniform(low=0.0,high=1.0))) * 3)*3
+        self.nextArrival = simtime + (-np.log(1-(np.random.uniform(low=0.0,high=1.0))) * 3)*10
 
 
     def departure(self,tellerID):
@@ -43,7 +44,7 @@ class Simulation:
         
     def move(self):
         for customer in self.customers:
-            if customer.queueLocation != 0:
+            if customer.queueLocation != 1:
                 customer.queueLocation-=1
 
 
@@ -67,8 +68,8 @@ class Teller():
         
 
     def tellerDepartureTime(self):                               
-        self.delay = (-np.log(1-(np.random.uniform(low=0.0,high=1.0)))*self.multiplier)
-        print(self.delay)
+        self.delay = (-np.log(1-(np.random.uniform(low=0.0,high=1.0)))*self.multiplier)*20
+        #print(self.delay)
         self.finishService = simtime + self.delay
         self.state=1
 
@@ -84,12 +85,48 @@ class Customer():
         #self.pacience = 0
         self.queueLocation = location
         self.isServed = 0
+        self.assignedTeller=-1
         self.startTime = simtime
+        self.ready = 0
+        self.inPosition = 0
+        self.x = 572
+        self.y = 750
     
     def draw(self,display):
-        pygame.draw.rect(display,(13,46,242),(572,180+60*self.queueLocation,50,50))
-     
+        self.object = pygame.draw.rect(display,(13,46,242),(self.x,self.y,50,50))
 
+    
+    def update(self,sim,teller=-1):
+        if teller==-1:
+            if self.y >= 130+self.queueLocation*70:
+                self.y -=20
+            elif self.y<=210:
+                self.ready = 1
+        elif teller==0:
+            if self.x <= 700:
+                self.x+=20
+            else:
+                if self.isServed==1:
+                    sim.tellers[self.assignedTeller].tellerDepartureTime()
+                    sim.queueLength-=1
+                    sim.move()
+                    self.isServed+=1
+        elif teller==1:
+            if self.x<=650:
+                self.x+=20
+            elif self.y<=320:
+                self.y+=20
+            elif self.x<=700:
+                self.x+=20
+            else:
+                if self.isServed==1:
+                    sim.tellers[self.assignedTeller].tellerDepartureTime()
+                    sim.queueLength-=1
+                    sim.move()
+                    self.isServed+=1
+            
+
+        
 def main():
     running = True
 
@@ -103,7 +140,7 @@ def main():
     while running:
         clock.tick(10)
         if sim.nextArrival <= simtime: #new customers arrive
-            sim.arrival()
+           sim.arrival()
         
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -112,35 +149,28 @@ def main():
         screen.fill((255, 255, 255))
         
         sim.draw(screen)
-
+    
         if (simtime%1==0):
-            sim.move()
             for customer in sim.customers:
-                
-                if customer.queueLocation == 0 and customer.isServed==0:
+                if customer.queueLocation == 1 and customer.isServed==0 and customer.ready==1:
                     result,id = sim.serve(customer)
                     if result==True:
                         customer.isServed=1
-                        sim.tellers[id].tellerDepartureTime()
-                        sim.queueLength-=1
             for teller in sim.tellers:
                 if teller.finishService <= simtime and teller.state==1:
-                    sim.departure(teller.tellerID)
                     teller.state=0
-
+                    sim.departure(teller.tellerID)
+            
+            
         for customer in sim.customers:
+            customer.update(sim,customer.assignedTeller)
+            #print(customer.assignedTeller)
             customer.draw(screen)
 
         for teller in sim.tellers:
             teller.draw(screen)
 
         pygame.display.update()
-
-    
-        #print(len(sim.customers))
         simtime+=1        
-
-
-    
     pygame.quit()
 main()
